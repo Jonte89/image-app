@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ImagePlus, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-const ACCEPTED = ["image/jpeg", "image/webp"];
-const ACCEPTED_EXT = [".jpg", ".jpeg", ".webp"];
+const ACCEPTED = ["image/jpeg", "image/webp", "image/png"];
+const ACCEPTED_EXT = [".jpg", ".jpeg", ".webp", ".png"];
+const MAX_BYTES = 10 * 1024 * 1024;
 
 function isAccepted(file: File) {
   if (ACCEPTED.includes(file.type)) return true;
@@ -40,7 +41,11 @@ export default function Dropzone({ label, sublabel, file, onChange }: Props) {
       const f = files?.[0];
       if (!f) return;
       if (!isAccepted(f)) {
-        toast.error("Only JPG and WEBP files are supported.");
+        toast.error("Only JPG, PNG, and WEBP files are supported.");
+        return;
+      }
+      if (f.size > MAX_BYTES) {
+        toast.error("File exceeds the 10 MB limit.");
         return;
       }
       onChange(f);
@@ -74,7 +79,7 @@ export default function Dropzone({ label, sublabel, file, onChange }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/webp,.jpg,.jpeg,.webp"
+        accept="image/jpeg,image/webp,image/png,.jpg,.jpeg,.webp,.png"
         className="hidden"
         onChange={(e) => {
           handleFiles(e.target.files);
@@ -132,7 +137,7 @@ export default function Dropzone({ label, sublabel, file, onChange }: Props) {
             <div className="mt-1 text-sm text-muted">{sublabel}</div>
           </div>
           <div className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
-            JPG · WEBP
+            JPG · PNG · WEBP
           </div>
         </div>
       )}

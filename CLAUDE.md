@@ -15,17 +15,20 @@ No test suite is configured.
 
 Single-page Next.js 14 App Router app that proxies two user-uploaded images to an n8n webhook and renders the binary image response.
 
-**Data flow (all client-side):**
+**Data flow:**
 1. `components/ImageMixer.tsx` is the only stateful component. It holds two `File` objects, a `loading` flag, and a result Blob URL.
 2. Each `components/Dropzone.tsx` owns its own object-URL lifecycle for the preview (`URL.createObjectURL` on file change, revoke on cleanup). The parent only sees `File | null`.
-3. On submit, `lib/api.ts#generateImage` POSTs a `multipart/form-data` body with fields `image1` and `image2` to the hardcoded n8n webhook URL and returns `response.blob()`.
-4. The Blob is turned into an object URL and passed to `components/ResultPanel.tsx`. `ImageMixer` revokes the previous URL before setting a new one, and on unmount.
+3. On submit, `lib/api.ts#generateImage` POSTs a `multipart/form-data` body to the local route `/api/generate`.
+4. `app/api/generate/route.ts` (Node runtime) validates each file (size ≤ 10 MB, MIME in `image/jpeg|png|webp`), forwards to the n8n webhook in `process.env.WEBHOOK_URL`, verifies the upstream content-type is `image/*`, then streams the bytes back.
+5. The Blob is turned into an object URL and passed to `components/ResultPanel.tsx`. `ImageMixer` revokes the previous URL before setting a new one, and on unmount.
 
 **Important constraints:**
-- The webhook URL in `lib/api.ts` is the live integration — do not mock it.
-- Accepted uploads are JPG/JPEG/WEBP only; validation lives in `Dropzone.tsx` (both MIME type and extension check, since drag-and-drop sometimes yields empty `type`).
+- The webhook URL is server-side only (`WEBHOOK_URL` in `.env.local`, never `NEXT_PUBLIC_*`) — it must never reach the browser. Always proxy through the API route, never `fetch` the upstream directly from a client component.
+- Accepted uploads are JPG/JPEG/PNG/WEBP only and ≤ 10 MB. Both Dropzone (UX) and the API route (authoritative) enforce this — keep them in sync.
 - Object URLs must be revoked when files change or components unmount — leaking them is the easiest bug to introduce here.
 - The Generate button must stay disabled until both files are set AND not currently loading.
+- Security headers (CSP, X-Frame-Options, etc.) are set in `next.config.mjs`. The CSP includes `img-src 'self' blob: data:` to allow the object-URL previews and result image — adjust there if rendering breaks. In development the CSP additionally permits `'unsafe-eval'` and `ws:`/`http://localhost:*` for HMR; without those Next.js fails to hydrate and click handlers silently never attach.
+- `next.config.mjs` changes only take effect after a dev server restart.
 
 **Styling:**
 - Tailwind v3 with custom palette in `tailwind.config.ts` (`cream`, `ink`, `muted`, `olive`, `border`) and font CSS variables `--font-sans` (Inter) / `--font-serif` (Instrument Serif) set in `app/layout.tsx`.
@@ -34,6 +37,10 @@ Single-page Next.js 14 App Router app that proxies two user-uploaded images to a
 
 **Path alias:** `@/*` maps to the project root (see `tsconfig.json`), so imports are `@/lib/api`, `@/components/...`.
 
+## Environment
+
+`WEBHOOK_URL` (server-only, no `NEXT_PUBLIC_` prefix) — the n8n webhook the API route proxies to. Stored in `.env.local` locally (gitignored); template in `.env.example`.
+
 ## Deployment
 
-Targeted at Vercel. No server routes, env vars, or API handlers — purely static + client fetch to the external webhook.
+Targeted at Vercel. Set `WEBHOOK_URL` in the project's environment variables before deploying — the `/api/generate` route returns a 500 "Server is not configured" without it.

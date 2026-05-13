@@ -29,8 +29,12 @@ export default function ImageMixer() {
     try {
       const blob = await generateImage(file1, file2);
       setResultUrl(URL.createObjectURL(blob));
-    } catch {
-      toast.error("Generation failed. Please try again.");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "Generation failed. Please try again.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
