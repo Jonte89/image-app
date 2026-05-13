@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F5EFE3;
+  --ink: #2C2A22;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #EFE7D4 0%, #F8F2E3 50%, #EFE7D4 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
