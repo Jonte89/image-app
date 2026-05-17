@@ -7,7 +7,7 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  `connect-src 'self'${isDev ? " ws: http://localhost:*" : ""}`,
+  `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}${isDev ? " ws: http://localhost:*" : ""}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

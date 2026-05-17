@@ -54,3 +54,6 @@ Thumbs.db
 /*.jpeg
 /*.png
 /*.webp
+
+# MCP servers
+.mcp.json
