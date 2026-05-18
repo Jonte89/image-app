@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import ImageMixer from "@/components/ImageMixer";
 import LogoutButton from "@/components/auth/LogoutButton";
 import { createClient } from "@/lib/supabase/server";
+import { hasActiveSubscription } from "@/lib/subscription";
+
+export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const supabase = createClient();
@@ -11,6 +14,11 @@ export default async function Page() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Gate the app behind an active Stripe subscription (checked live).
+  if (!(await hasActiveSubscription(supabase, user))) {
+    redirect("/pay");
   }
 
   const { data: profile } = await supabase
