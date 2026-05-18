@@ -28,7 +28,6 @@ npm run dev                       # http://localhost:3000
 | `WEBHOOK_URL` | Server-side n8n webhook the `/api/generate` route forwards uploads to. Never prefix with `NEXT_PUBLIC_` — it must not reach the browser. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. Used by the browser and server auth clients. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable (anon) key. Safe in the browser — Row Level Security enforces access. |
-| `NEXT_PUBLIC_STRIPE_PAYMENT_LINK` | Stripe Payment Link URL for the €9.99/month subscription. Public — safe in the browser. |
 | `STRIPE_SECRET_KEY` | Stripe secret key. Server-only — used to verify checkout and read live subscription status. Never prefix with `NEXT_PUBLIC_`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key. Server-only — used solely to store the Stripe customer id on a profile (bypasses RLS). Never expose to the browser. |
 
@@ -47,7 +46,7 @@ The app is gated behind Supabase email/password auth (`@supabase/ssr`).
 
 Access requires an active **€9.99/month** Stripe subscription on top of a confirmed account.
 
-- After login, any account without an active subscription is redirected to `/pay`, which links out to a **Stripe Payment Link** (subscription mode). The link carries the Supabase user ID as `client_reference_id`, so the subscription is tied to the account regardless of the email typed at checkout.
+- After login, any account without an active subscription is redirected to `/pay`, which links out to a **Stripe Payment Link** (subscription mode; the URL is the `STRIPE_PAYMENT_LINK` constant in `app/pay/page.tsx`). The link carries the Supabase user ID as `client_reference_id`, so the subscription is tied to the account regardless of the email typed at checkout.
 - Stripe redirects the buyer back to `/pay/success?session_id=…`. That route re-fetches the Checkout Session from Stripe (the query string is not trusted), confirms it is paid and belongs to the signed-in user, then stores `profiles.stripe_customer_id` via the Supabase service-role client.
 - **Access is checked live** (`lib/subscription.ts#hasActiveSubscription`): every load of `/` and every `/api/generate` call asks Stripe whether the customer has an `active`/`trialing` subscription. So when a user cancels or a payment fails, they lose access on their next request — no webhook needed and no stale flag.
 - `stripe_customer_id` is writable **only** by the service role — `UPDATE` is revoked from the `authenticated` role for every column except `name`, so a user cannot tamper with the mapping.
@@ -77,6 +76,6 @@ POST /api/generate           ← multipart/form-data
 ## Deploying to Vercel
 
 1. Push to a Git remote and import the project in Vercel.
-2. Add `WEBHOOK_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_STRIPE_PAYMENT_LINK`, `STRIPE_SECRET_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` under **Project Settings → Environment Variables**, then redeploy (the `NEXT_PUBLIC_*` values are baked in at build time).
+2. Add `WEBHOOK_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` under **Project Settings → Environment Variables**, then redeploy (the `NEXT_PUBLIC_*` values are baked in at build time). The Stripe Payment Link URL is not an env var — it lives in `app/pay/page.tsx`.
 3. In the Supabase dashboard (**Authentication → URL Configuration**), set the **Site URL** to the production domain and add `https://<your-domain>/auth/callback` to **Redirect URLs**, or confirmation emails will fail.
 4. Update the Stripe Payment Link's **after-payment redirect** to `https://<your-domain>/pay/success?session_id={CHECKOUT_SESSION_ID}` (it points at `localhost` for local dev), and use live-mode Stripe keys + a live-mode subscription Payment Link in production.

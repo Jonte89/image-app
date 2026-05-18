@@ -5,6 +5,14 @@ import LogoutButton from "@/components/auth/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Stripe Payment Link for the €9.99/month subscription. This is a public URL
+ * (every visitor sees it on the Subscribe button), so it lives in code rather
+ * than an env var — that keeps it in lockstep with the deployed build. Swap
+ * this for the live-mode link when going to production.
+ */
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_5kQ28r2B3dcH5qP2L5fMA00";
+
 const PERKS = [
   "Unlimited image generations",
   "Billed €9.99 every month — cancel anytime",
@@ -35,12 +43,9 @@ export default async function PayPage({
     .eq("id", user.id)
     .single();
 
-  const base = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK;
-  const payUrl = base
-    ? `${base}?client_reference_id=${encodeURIComponent(
-        user.id,
-      )}&prefilled_email=${encodeURIComponent(user.email ?? "")}`
-    : null;
+  const payUrl = `${STRIPE_PAYMENT_LINK}?client_reference_id=${encodeURIComponent(
+    user.id,
+  )}&prefilled_email=${encodeURIComponent(user.email ?? "")}`;
 
   const firstName = profile?.name?.trim().split(/\s+/)[0];
   const verificationFailed = searchParams.status === "error";
@@ -82,19 +87,12 @@ export default async function PayPage({
             </p>
           )}
 
-          {payUrl ? (
-            <a
-              href={payUrl}
-              className="mt-7 flex items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-medium text-cream transition-opacity hover:opacity-90"
-            >
-              Subscribe — €9.99 / month
-            </a>
-          ) : (
-            <p className="mt-7 rounded-xl border border-border bg-cream px-4 py-3 text-sm text-muted">
-              Payments are not configured. Set{" "}
-              <code>NEXT_PUBLIC_STRIPE_PAYMENT_LINK</code>.
-            </p>
-          )}
+          <a
+            href={payUrl}
+            className="mt-7 flex items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-medium text-cream transition-opacity hover:opacity-90"
+          >
+            Subscribe — €9.99 / month
+          </a>
 
           <p className="mt-4 text-center text-xs text-muted">
             Secure checkout by Stripe. You&rsquo;ll return here automatically.

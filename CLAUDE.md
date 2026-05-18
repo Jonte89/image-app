@@ -16,7 +16,7 @@ No test suite is configured.
 Next.js 14 App Router app that proxies two user-uploaded images to an n8n webhook and renders the binary image response. Access is gated behind Supabase email/password auth **and** a €9.99/month Stripe subscription.
 
 **Paywall:**
-- €9.99/month subscription via a Stripe Payment Link in subscription mode (`NEXT_PUBLIC_STRIPE_PAYMENT_LINK`). The price is recurring (`interval: month`).
+- €9.99/month subscription via a Stripe Payment Link in subscription mode. The link URL is the `STRIPE_PAYMENT_LINK` constant in `app/pay/page.tsx` (a public URL — kept in code, not an env var, so it stays in sync with the deployed build). The price is recurring (`interval: month`).
 - `profiles` carries `stripe_customer_id` (only payment-related column). `UPDATE` is revoked from the `authenticated` role for every column except `name` (`grant update (name)`), so a user cannot tamper with it — it is written only by the service role.
 - Access is **checked live** via `lib/subscription.ts#hasActiveSubscription(supabase, user)`: it resolves the Stripe customer (from `stripe_customer_id`, falling back to an email lookup that it then persists) and returns true only if Stripe reports an `active` or `trialing` subscription. There is no cached `has_paid` flag — a cancellation or failed payment locks the user out on their next request, with no webhook required.
 - `/pay` (Server Component) is shown to logged-in users without an active subscription. It links to the Payment Link with `?client_reference_id=<user.id>&prefilled_email=<email>` appended, so the subscription binds to the Supabase user ID, not the editable checkout email.
@@ -58,7 +58,6 @@ Next.js 14 App Router app that proxies two user-uploaded images to an n8n webhoo
 
 - `WEBHOOK_URL` (server-only, no `NEXT_PUBLIC_` prefix) — the n8n webhook the API route proxies to.
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase project URL and publishable key, used by the auth clients. The publishable key is safe in the browser; RLS enforces access.
-- `NEXT_PUBLIC_STRIPE_PAYMENT_LINK` — Stripe Payment Link URL for the €9.99/month subscription. Public.
 - `STRIPE_SECRET_KEY` (server-only) — verifies the Checkout Session in `/pay/success` and reads live subscription status.
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only) — used only to store `stripe_customer_id`; bypasses RLS, must never reach the browser.
 
@@ -66,4 +65,4 @@ Stored in `.env.local` locally (gitignored); template in `.env.example`.
 
 ## Deployment
 
-Targeted at Vercel. Set `WEBHOOK_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_STRIPE_PAYMENT_LINK`, `STRIPE_SECRET_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` in the project's environment variables before deploying. Also repoint the Stripe Payment Link's after-payment redirect to `<domain>/pay/success?session_id={CHECKOUT_SESSION_ID}` and switch to live-mode Stripe keys/link for production — `/api/generate` returns a 500 "Server is not configured" without `WEBHOOK_URL`, and the `NEXT_PUBLIC_*` values are baked in at build time so a redeploy is needed after changing them. In the Supabase dashboard, the production domain must be the Site URL and `<domain>/auth/callback` must be an allowed Redirect URL, or email confirmation links fail.
+Targeted at Vercel. Set `WEBHOOK_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` in the project's environment variables before deploying. Also repoint the Stripe Payment Link's after-payment redirect to `<domain>/pay/success?session_id={CHECKOUT_SESSION_ID}` and switch to live-mode Stripe keys/link for production — `/api/generate` returns a 500 "Server is not configured" without `WEBHOOK_URL`, and the `NEXT_PUBLIC_*` values are baked in at build time so a redeploy is needed after changing them. In the Supabase dashboard, the production domain must be the Site URL and `<domain>/auth/callback` must be an allowed Redirect URL, or email confirmation links fail.
